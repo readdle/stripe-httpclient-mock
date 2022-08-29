@@ -25,7 +25,7 @@ class AbstractEntity implements ResponseInterface
             return;
         }
 
-        $this->props[$key] = $value;
+        $this->fillProps([$key => $value]);
     }
 
     public static function create(string $id, array $props = []): ResponseInterface
@@ -36,23 +36,51 @@ class AbstractEntity implements ResponseInterface
         $shortClass = substr($class, strrpos($class, '\\') + 1);
         $object = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $shortClass));
 
-        $entity->props['id'] = $id;
-        $entity->props['object'] = $object;
+        $mixedProps = array_merge(
+            [
+                'id' => $id,
+                'object' => $object,
+            ],
+            $entity->props,
+            $props
+        );
 
-        $entity->update($props);
+        if (array_key_exists('created', $mixedProps) && empty($mixedProps['created'])) {
+            $mixedProps['created'] = time();
+        }
 
+        $entity->props = [];
+        $entity->fillProps($mixedProps);
         return $entity;
     }
 
-    public function update(array $props): void
+    protected function fillProps(array $props): void
     {
+        $sampleProps = (new static())->props;
+        $sampleProps['id'] = '';
+        $sampleProps['object'] = '';
+
         foreach ($props as $key => $value) {
-            if (is_bool($this->$key) && is_string($value)) {
+            if (!array_key_exists($key, $sampleProps)) {
+                continue;
+            }
+
+            if (is_bool($sampleProps[$key]) && is_string($value)) {
                 $value = $value !== 'false';
             }
 
-            $this->$key = $value;
+            if ($value === '') {
+                $value = null;
+            }
+
+            $this->props[$key] = $value;
         }
+    }
+
+    public function update(array $props): ResponseInterface
+    {
+        $this->fillProps($props);
+        return $this;
     }
 
     /**
@@ -140,5 +168,10 @@ class AbstractEntity implements ResponseInterface
     public function toString(): string
     {
         return json_encode($this->toArray());
+    }
+
+    public function getHttpStatusCode(): int
+    {
+        return 200;
     }
 }

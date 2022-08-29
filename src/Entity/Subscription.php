@@ -78,26 +78,21 @@ class Subscription extends AbstractEntity
         }
 
         if (array_key_exists('items', $props)) {
-            $subscriptionItem = new SubscriptionItem();
+            $items = new Collection();
 
             foreach ($props['items'] as $item) {
-                if (!array_key_exists('price', $item)) {
+                $subscriptionItem = EntityManager::createEntity('subscription_item', $item);
+
+                if (!$subscriptionItem instanceof AbstractEntity) {
                     continue;
                 }
 
-                /** @var Price $price */
-                $price = EntityManager::retrieveEntity('price', $item['price']);
-
-                if ($price instanceof ResourceMissing) {
-                    break;
-                }
-
-                $subscriptionItem->price = $price->toArray();
+                $items->add($subscriptionItem);
             }
 
-            $collection = new Collection();
-            $collection->data[] = $subscriptionItem;
-            $entity->props['items'] = $collection->toArray();
+            $entity->props['items'] = $items->toArray();
+        } else {
+            $entity->props['items'] = (new Collection())->toArray();
         }
 
         if (array_key_exists('promotion_code', $props)) {

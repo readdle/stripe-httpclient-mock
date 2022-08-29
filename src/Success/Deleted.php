@@ -20,4 +20,9 @@ class Deleted implements ResponseInterface
     {
         return json_encode($this->toArray());
     }
+
+    public function getHttpStatusCode(): int
+    {
+        return 200;
+    }
 }

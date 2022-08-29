@@ -6,4 +6,5 @@ namespace Readdle\StripeHttpClientMock;
 interface ResponseInterface
 {
     public function toString(): string;
+    public function getHttpStatusCode(): int;
 }

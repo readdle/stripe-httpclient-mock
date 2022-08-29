@@ -3,7 +3,7 @@
     "description": "Mock of Stripe's HttpClient which can be used in testing purposes in order to test your code and not to perform actual HTTP requests",
     "type": "library",
 	"license": "MIT",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"php": ">=7.4",
 	"autoload": {
 		"psr-4": {

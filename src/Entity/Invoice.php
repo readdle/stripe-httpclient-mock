@@ -95,7 +95,11 @@ class Invoice extends AbstractEntity
         'webhooks_delivered_at'            => null,
     ];
 
-    protected static array $expandableProps = ['payment_intent'];
+    protected static array $expandableProps = [
+        'customer',
+        'payment_intent',
+        'subscription',
+    ];
 
     protected static array $subActions = [
         'finalize' => 'finalize',
@@ -121,20 +125,47 @@ class Invoice extends AbstractEntity
             $props['payment_intent'] = $paymentIntent->id;
         }
 
-        $lines = new Collection();
-
-        /** @noinspection SpellCheckingInspection */
-        $pendingInvoiceItems = EntityManager::listEntity('invoiceitem', ['customer' => $props['customer']])->data;
-
-        if (!empty($pendingInvoiceItems)) {
-            foreach ($pendingInvoiceItems as $pendingInvoiceItem) {
-                $lines->add(LineItem::createFromInvoiceItem($pendingInvoiceItem));
-            }
+        if (array_key_exists('default_tax_rates', $props)) {
+            $props['default_tax_rates'] = array_map(
+                fn ($defaultTaxRate) =>
+                    is_array($defaultTaxRate)
+                        ? $defaultTaxRate
+                        : EntityManager::retrieveEntity('tax_rate', $defaultTaxRate)->toArray(),
+                $props['default_tax_rates']
+            );
         }
 
-        $props['lines'] = $lines->toArray();
+        if (!array_key_exists('lines', $props)) {
+            $lines = new Collection();
+
+            /** @noinspection SpellCheckingInspection */
+            $pendingInvoiceItems = EntityManager::listEntity('invoiceitem', ['customer' => $props['customer']])->data;
+
+            if (!empty($pendingInvoiceItems)) {
+                foreach ($pendingInvoiceItems as $pendingInvoiceItem) {
+                    $lines->add(LineItem::createFromInvoiceItem($pendingInvoiceItem));
+                }
+            }
+
+            $props['lines'] = $lines->toArray();
+        }
 
         return parent::create($id, $props);
+    }
+
+    public function update(array $props): ResponseInterface
+    {
+        if (array_key_exists('default_tax_rates', $props)) {
+            $props['default_tax_rates'] = array_map(
+                fn ($defaultTaxRate) =>
+                is_array($defaultTaxRate)
+                    ? $defaultTaxRate
+                    : EntityManager::retrieveEntity('tax_rate', $defaultTaxRate)->toArray(),
+                $props['default_tax_rates']
+            );
+        }
+
+        return parent::update($props);
     }
 
     public static function parseUrlTail(string $tail): array

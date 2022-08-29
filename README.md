@@ -16,8 +16,8 @@ configuration in container-less case).
 # Taking a part in this project
 
 The task "to cover all the functionality of `stripe-php` library" is really huge. It's possible to achieve it,
-but it requires a huge efforts (as huge as the task is) and is financially senseless in order to be implemented
-by a group of programmers while working on the main project.
+but it requires a huge efforts (as huge as the task is) and is not always possible while you are working on the
+main project.
 
 Therefore, it is **highly** appreciated to take part in this project for anyone interested in any of thees ways:
 - You have an idea on how to improve this project, or you see that something is wrong? Don't hesitate opening
@@ -25,9 +25,13 @@ an issue.
 - You have time and will to add/improve functionality or fix a bug? Your pull requests would be **extremely**
 valuable
 
+If you cover just a part of Stripe's API you're using, it is possible that one day the whole API will be covered.
+
 # Installation
 
-Nothing special here, just use composer to install the package and that's it.
+Nothing special here, just use composer to install the package:
+
+> composer install readdle/stripe-httpclient-mock
 
 # Usage
 
@@ -44,25 +48,25 @@ piece of code instead of performing real HTTP requests.
 
 ### Files
 
-`Collection.php` - representation of collection of entities
+`src/Collection.php` - representation of collection of entities
 
-`EntityManager.php` - manager, which is responsible for creating/updating/deleting/listing entities, also performs 
+`src/EntityManager.php` - manager, which is responsible for creating/updating/deleting/listing entities, also performs 
 search and paging functions
 
-`HttpClient.php` - it's obvious from its name, HTTP client which substitutes `stripe-php`'s curl-based client
+`src/HttpClient.php` - HTTP client which substitutes `stripe-php`'s curl-based client
 
 ### Directories
 
-`Entity` - implemented entities, each entity **must** extend AbstractEntity class
+`src/Entity` - implemented entities, each entity **must** extend AbstractEntity class
 
-`Error` - erroneous responses, each error **must** extend AbstractError class
+`src/Error` - erroneous responses, each error **must** extend AbstractError class
 
-`Success` - success responses, which doesn't contain entity in it, but an information about an action
+`src/Success` - success responses, which doesn't contain entity in it, but an information about an action
 and its result, **must** implement `ResponseInterface`
 
-# Entity structure
+# Entity class structure
 
-### Props
+### Properties
 
 Each entity **must** have at least `$props` property filled in with all the fields this entity has (the list of fields
 for each entity could be found in [Stripe's documentation](https://stripe.com/docs/api)).

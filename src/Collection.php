@@ -5,7 +5,7 @@ namespace Readdle\StripeHttpClientMock;
 
 use Readdle\StripeHttpClientMock\Entity\AbstractEntity;
 
-class Collection
+class Collection implements ResponseInterface
 {
     public string $object = 'list';
     public array $data = [];
@@ -19,9 +19,14 @@ class Collection
         $this->url = $url;
     }
 
-    public function add(AbstractEntity $entity)
+    public function add(AbstractEntity $entity): void
     {
         $this->data[] = $entity;
+    }
+
+    public function addCollection(Collection $collection): void
+    {
+        $this->data = array_merge($this->data, $collection->data);
     }
 
     public function toArray(): array
@@ -37,5 +42,10 @@ class Collection
     public function toString(): string
     {
         return json_encode($this->toArray());
+    }
+
+    public function getHttpStatusCode(): int
+    {
+        return 200;
     }
 }

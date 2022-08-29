@@ -9,10 +9,12 @@ use Readdle\StripeHttpClientMock\Error\AbstractError;
 use Readdle\StripeHttpClientMock\Error\Unauthorized;
 use Stripe\ApiResource;
 use Stripe\HttpClient\ClientInterface;
+use Stripe\HttpClient\CurlClient;
 
 final class HttpClient implements ClientInterface
 {
     public static bool $debug = false;
+    public static bool $sendToStripe = false;
     public static string $apiKey = '';
 
     private static function resolveAction(string $method, bool $idPresent): string
@@ -87,12 +89,12 @@ final class HttpClient implements ClientInterface
     final public function request($method, $absUrl, $headers, $params, $hasFile): array
     {
         if (self::$debug) {
-            fwrite(STDOUT, "HttpClient: $method -> $absUrl\n");
+            fwrite(STDOUT, "HttpClient: $method -> $absUrl\n\n");
         }
 
         $extractedApiKey = self::extractApiKey($headers);
 
-        if ($extractedApiKey !== self::$apiKey) {
+        if (!self::$sendToStripe && $extractedApiKey !== self::$apiKey) {
             $error = new Unauthorized($extractedApiKey);
 
             return [
@@ -136,33 +138,37 @@ final class HttpClient implements ClientInterface
             );
         }
 
-        try {
-            $response = EntityManager::handleAction($action, $entity, $entityId, $params);
-        } catch (Exception $e) {
+        if (self::$sendToStripe) {
+            [$responseText, $httpStatusCode, $headers] = CurlClient::instance()->request($method, $absUrl, $headers, $params, $hasFile);
+
             if (self::$debug) {
-                fwrite(STDOUT, 'EntityManager exception: ' . $e->getMessage() . "\n");
+                fwrite(
+                    STDOUT,
+                    'Stripe response (' . $httpStatusCode . '): '
+                    . json_encode(json_decode($responseText, true), JSON_PRETTY_PRINT) . "\n\n"
+                );
+            }
+        } else {
+            try {
+                $response = EntityManager::handleAction($action, $entity, $entityId, $params);
+            } catch (Exception $e) {
+                if (self::$debug) {
+                    fwrite(STDOUT, 'EntityManager exception: ' . $e->getMessage() . "\n\n" . $e->getTraceAsString() . "\n\n");
+                }
+
+                return ['{"error":{}}', 500, []];
             }
 
-            return ['{"error":{}}', 500, []];
-        }
+            $httpStatusCode = $response->getHttpStatusCode();
+            $responseText = $response->toString();
+            $headers = [];
 
-        if ($response instanceof AbstractError) {
             if (self::$debug) {
-                fwrite(STDOUT, 'HttpClient error response: ' . $response->toString() . "\n\n");
+                fwrite(STDOUT, 'HttpClient response (' . $httpStatusCode . '): ' . $responseText . "\n\n");
             }
-
-            return [$response->toString(), $response->getHttpStatusCode(), []];
         }
 
-        $response = $response->toString();
-        $httpStatusCode = 200;
 
-        // [$response, $httpStatusCode] = \Stripe\HttpClient\CurlClient::instance()->request($method, $absUrl, $headers, $params, $hasFile);
-
-        if (self::$debug) {
-            fwrite(STDOUT, 'HttpClient response (' . $httpStatusCode . '): ' . $response . "\n\n");
-        }
-
-        return [$response, $httpStatusCode, []];
+        return [$responseText, $httpStatusCode, $headers];
     }
 }

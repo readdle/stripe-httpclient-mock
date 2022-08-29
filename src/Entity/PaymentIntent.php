@@ -53,6 +53,11 @@ class PaymentIntent extends AbstractEntity
         'transfer_group'              => null,
     ];
 
+    protected static array $expandableProps = [
+        'payment_method',
+        'invoice',
+    ];
+
     protected static array $subActions = [
         'cancel' => 'cancel',
     ];

@@ -73,15 +73,19 @@ final class EntityManager
             self::$entities[$entityName] = [];
         }
 
-        $prefix = call_user_func([$entityClass, 'prefix']);
+        if (!array_key_exists('id', $params)) {
+            $prefix = call_user_func([$entityClass, 'prefix']);
 
-        if (!empty($prefix)) {
-            $prefix .= '_';
+            if (!empty($prefix)) {
+                $prefix .= '_';
+            }
+
+            do {
+                $id = uniqid($prefix);
+            } while (array_key_exists($id, self::$entities[$entityName]));
+        } else {
+            $id = $params['id'];
         }
-
-        do {
-            $id = uniqid($prefix);
-        } while (array_key_exists($id, self::$entities[$entityName]));
 
         return self::$entities[$entityName][$id] = call_user_func([$entityClass, 'create'], $id, $params);
     }
@@ -92,8 +96,7 @@ final class EntityManager
             return new ResourceMissing();
         }
 
-        self::$entities[$entityName][$entityId]->update($params);
-        return self::$entities[$entityName][$entityId];
+        return self::$entities[$entityName][$entityId]->update($params);
     }
 
     public static function listEntity(string $entityName, array $filters)
@@ -111,7 +114,7 @@ final class EntityManager
                 && !empty($value)
                 && !array_key_exists($value, self::$entities[$filter])
             ) {
-                return new ResourceMissing();
+                return new ResourceMissing('No such ' . $filter . ": '" . $value . "'", $filter);
             }
         }
 
@@ -318,11 +321,16 @@ final class EntityManager
                         break;
 
                     case 'expandableProp':
-                        $expandedEntity = self::retrieveEntity(
-                            $howToExpand['object'],
-                            $value,
-                            $howToExpand['params'] ?? []
-                        );
+                        if ($value instanceof AbstractEntity) {
+                            // already expanded
+                            $expandedEntity = $value;
+                        } else {
+                            $expandedEntity = self::retrieveEntity(
+                                $howToExpand['object'],
+                                $value,
+                                $howToExpand['params'] ?? []
+                            );
+                        }
                         break;
 
                     default:
@@ -330,7 +338,7 @@ final class EntityManager
                 }
 
 
-                if (!$expandedEntity) {
+                if (!$expandedEntity instanceof AbstractEntity) {
                     continue 2;
                 }
 

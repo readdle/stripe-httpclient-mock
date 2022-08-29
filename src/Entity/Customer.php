@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace Readdle\StripeHttpClientMock\Entity;
 
+use Readdle\StripeHttpClientMock\Collection;
+use Readdle\StripeHttpClientMock\EntityManager;
+use Readdle\StripeHttpClientMock\ResponseInterface;
+
 class Customer extends AbstractEntity
 {
     protected array $props = [
@@ -38,5 +42,16 @@ class Customer extends AbstractEntity
     public static function prefix(): string
     {
         return 'cus';
+    }
+
+    public function subAction(string $action, array $params): ResponseInterface
+    {
+        if ($action === 'sources') {
+            $sources = new Collection();
+            $sources->addCollection(EntityManager::listEntity('card', ['customer' => $this->props['id']]));
+            return $sources;
+        }
+
+        return parent::subAction($action, $params);
     }
 }

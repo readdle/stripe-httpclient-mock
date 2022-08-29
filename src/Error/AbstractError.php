@@ -24,7 +24,7 @@ abstract class AbstractError implements ResponseInterface
 
     public function toArray(): array
     {
-        return ['error' => $this->error];
+        return ['error' => array_filter($this->error)];
     }
 
     public function toString(): string
