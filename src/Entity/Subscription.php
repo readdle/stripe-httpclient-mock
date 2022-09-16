@@ -77,6 +77,9 @@ class Subscription extends AbstractEntity
             );
         }
 
+        $currency = null;
+        $amount = 0;
+
         if (array_key_exists('items', $props)) {
             $items = new Collection();
 
@@ -87,6 +90,8 @@ class Subscription extends AbstractEntity
                     continue;
                 }
 
+                $currency = $subscriptionItem->price->currency;
+                $amount += (float) $subscriptionItem->price->unit_amount;
                 $items->add($subscriptionItem);
             }
 
@@ -110,6 +115,14 @@ class Subscription extends AbstractEntity
             $invoiceProps['customer'] = $props['customer'];
         }
 
+        if (array_key_exists('metadata', $props)) {
+            $invoiceProps['metadata'] = $props['metadata'];
+        }
+
+        $invoiceProps['paid'] = true;
+        $invoiceProps['status'] = 'paid';
+        $invoiceProps['currency'] = $currency;
+        $invoiceProps['total'] = $amount;
         /** @var Invoice $invoice */
         $invoice = EntityManager::createEntity('invoice', $invoiceProps);
         $entity->props['latest_invoice'] = $invoice->id;
