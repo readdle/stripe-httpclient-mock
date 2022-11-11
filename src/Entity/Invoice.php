@@ -203,7 +203,9 @@ class Invoice extends AbstractEntity
         $invoice = self::create('', ['customer' => $params['customer']]);
         $lines = new Collection();
 
-        foreach ($params['invoice_items'] ?? [] as $invoiceItemData) {
+        $items = $params['invoice_items'] ?? $params['subscription_items'] ?? [];
+
+        foreach ($items as $invoiceItemData) {
             if (array_key_exists('price', $invoiceItemData)) {
                 $invoiceItemData['price'] = EntityManager::retrieveEntity('price', $invoiceItemData['price']);
             }
