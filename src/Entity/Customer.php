@@ -48,7 +48,12 @@ class Customer extends AbstractEntity
     {
         if ($action === 'sources') {
             $sources = new Collection();
-            $sources->addCollection(EntityManager::listEntity('card', ['customer' => $this->props['id']]));
+            $cards = EntityManager::listEntity('card', ['customer' => $this->props['id']]);
+
+            if ($cards instanceof Collection) {
+                $sources->addCollection($cards);
+            }
+
             return $sources;
         }
 

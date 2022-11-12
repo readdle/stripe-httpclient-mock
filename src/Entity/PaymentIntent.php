@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Readdle\StripeHttpClientMock\Entity;
 
 use Readdle\StripeHttpClientMock\Error\ResourceMissing;
+use Readdle\StripeHttpClientMock\ResponseInterface;
 
 class PaymentIntent extends AbstractEntity
 {
@@ -67,7 +68,7 @@ class PaymentIntent extends AbstractEntity
         return 'pi';
     }
 
-    public function cancel(array $params)
+    public function cancel(array $params): ResponseInterface
     {
         $validStatuses = ['requires_payment_method', 'requires_capture', 'requires_confirmation', 'requires_action', 'processing'];
 

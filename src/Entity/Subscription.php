@@ -1,4 +1,5 @@
 <?php
+/** @noinspection PhpUndefinedFieldInspection */
 declare(strict_types=1);
 
 namespace Readdle\StripeHttpClientMock\Entity;
@@ -6,7 +7,6 @@ namespace Readdle\StripeHttpClientMock\Entity;
 use Exception;
 use Readdle\StripeHttpClientMock\Collection;
 use Readdle\StripeHttpClientMock\EntityManager;
-use Readdle\StripeHttpClientMock\Error\ResourceMissing;
 
 class Subscription extends AbstractEntity
 {

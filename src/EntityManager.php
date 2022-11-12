@@ -10,19 +10,37 @@ use Readdle\StripeHttpClientMock\Success\Deleted;
 
 final class EntityManager
 {
-    private static array $entities = [];
+    private static array $entities = [
+        'card'           => [],
+        'charge'         => [],
+        'coupon'         => [],
+        'customer'       => [],
+        'discount'       => [],
+        'invoice'        => [],
+        'mandate'        => [],
+        'payment_intent' => [],
+        'payment_method' => [],
+        'price'          => [],
+        'product'        => [],
+        'promotion_code' => [],
+        'setup_intent'   => [],
+        'source'         => [],
+        'subscription'   => [],
+        'tax_id'         => [],
+        'tax_rate'       => [],
+    ];
 
     /**
      * @throws Exception
      * @noinspection PhpUnused
      */
-    final public static function loadFixtures(array $metadata)
+    final public static function loadFixtures(array $metadata): void
     {
         foreach ($metadata as $entityName => $fixturesFile) {
             $set = json_decode(file_get_contents($fixturesFile), true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new Exception('Fixtures file for entity "' . $entityName . '" contains invalid JSON');
+                throw new Exception("Fixtures file for entity '$entityName' contains invalid JSON");
             }
 
             $entityClass = self::resolveEntityClass($entityName);
@@ -36,7 +54,7 @@ final class EntityManager
     /**
      * @throws Exception
      */
-    final public static function handleAction(string $action, string $entityName, ?string $entityId, array $params = [])
+    final public static function handleAction(string $action, string $entityName, ?string $entityId, array $params = []): ResponseInterface
     {
         switch ($action) {
             case 'create':
@@ -99,7 +117,7 @@ final class EntityManager
         return self::$entities[$entityName][$entityId]->update($params);
     }
 
-    public static function listEntity(string $entityName, array $filters)
+    public static function listEntity(string $entityName, array $filters): ResponseInterface
     {
         if (array_key_exists('expand', $filters)) {
             $whatToExpand = $filters['expand'];
@@ -114,12 +132,12 @@ final class EntityManager
                 && !empty($value)
                 && !array_key_exists($value, self::$entities[$filter])
             ) {
-                return new ResourceMissing('No such ' . $filter . ": '" . $value . "'", $filter);
+                return new ResourceMissing("No such $filter: '$value'", $filter);
             }
         }
 
         $filtered = self::filter($entityName, $filters);
-        $collection = new Collection($filtered['data'], $filtered['hasMore'], '/v1/' . $entityName . 's');
+        $collection = new Collection($filtered['data'], $filtered['hasMore'], "/v1/{$entityName}s");
 
         if ($whatToExpand) {
             return self::expandCollection($whatToExpand, $collection);
@@ -151,7 +169,7 @@ final class EntityManager
         return self::$entities[$entityName][$entityId];
     }
 
-    public static function deleteEntity(string $entityName, string $entityId)
+    public static function deleteEntity(string $entityName, string $entityId): ResponseInterface
     {
         if (
             !array_key_exists($entityName, self::$entities)
@@ -172,7 +190,7 @@ final class EntityManager
      */
     private static function subActionOn(string $action, string $entityName, ?string $entityId, array $params): ResponseInterface
     {
-        if (!array_key_exists($entityName, self::$entities)) {
+        if (!array_key_exists($entityName, self::$entities) && !self::resolveEntityClass($entityName)) {
             return new ResourceMissing();
         }
 
@@ -189,8 +207,8 @@ final class EntityManager
         try {
             /** @var AbstractEntity $entity */
             return $entity->subAction($action, $params);
-        } catch (Exception $e) {
-            throw new Exception('Entity "' . $entityName . '" does not support action "' . $action . '"');
+        } catch (Exception) {
+            throw new Exception("Entity '$entityName' does not support action '$action'");
         }
     }
 
@@ -206,16 +224,16 @@ final class EntityManager
 
         $shortClass = array_key_exists($entityName, $exceptions)
             ? $exceptions[$entityName]
-            : join('', array_map('ucfirst', explode('_', $entityName)));
+            : join('', array_map('ucfirst', preg_split('/[._]/', $entityName)));
 
         $entityClass = __NAMESPACE__ . '\\Entity\\' . $shortClass;
 
         if (!class_exists($entityClass)) {
-            throw new Exception('Unknown entity ' . $entityClass);
+            throw new Exception("Unknown entity $entityClass");
         }
 
         if (!is_subclass_of($entityClass, AbstractEntity::class)) {
-            throw new Exception($entityClass . ' does not extend Entity class');
+            throw new Exception("$entityClass does not extend Entity class");
         }
 
         return $entityClass;

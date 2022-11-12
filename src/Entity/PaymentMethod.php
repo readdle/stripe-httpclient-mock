@@ -5,6 +5,7 @@ namespace Readdle\StripeHttpClientMock\Entity;
 
 use Readdle\StripeHttpClientMock\EntityManager;
 use Readdle\StripeHttpClientMock\Error\ResourceMissing;
+use Readdle\StripeHttpClientMock\ResponseInterface;
 
 class PaymentMethod extends AbstractEntity
 {
@@ -36,7 +37,7 @@ class PaymentMethod extends AbstractEntity
     }
 
     /** @noinspection PhpUnused */
-    public function detachCustomer()
+    public function detachCustomer(): ResponseInterface
     {
         if (empty($this->props['customer'])) {
             return new ResourceMissing();
@@ -45,10 +46,12 @@ class PaymentMethod extends AbstractEntity
         $customer = EntityManager::retrieveEntity('customer', $this->props['customer']);
 
         if ($customer instanceof AbstractEntity) {
+            /** @noinspection PhpUndefinedFieldInspection */
             $invoiceSettings = $customer->invoice_settings;
 
             if ($invoiceSettings && $invoiceSettings['default_payment_method'] === $this->props['id']) {
                 $invoiceSettings['default_payment_method'] = null;
+                /** @noinspection PhpUndefinedFieldInspection */
                 $customer->invoice_settings = $invoiceSettings;
             }
         }

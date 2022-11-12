@@ -32,14 +32,10 @@ class AbstractEntity implements ResponseInterface
     {
         $entity = new static();
 
-        $class = get_class($entity);
-        $shortClass = substr($class, strrpos($class, '\\') + 1);
-        $object = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $shortClass));
-
         $mixedProps = array_merge(
             [
                 'id' => $id,
-                'object' => $object,
+                'object' => static::objectName(),
             ],
             $entity->props,
             $props
@@ -98,7 +94,7 @@ class AbstractEntity implements ResponseInterface
 
     public static function parseUrlTail(string $tail): array
     {
-        if (!preg_match('/^(?P<entityId>\w+)(?P<subAction>\/[a-z_]+)?(?P<subEntityId>\/\w+)?$/', $tail, $matches)) {
+        if (!preg_match('/^(?P<entityId>[\w-]+)(?P<subAction>\/[a-z_]+)?(?P<subEntityId>\/\w+)?$/', $tail, $matches)) {
             return [];
         }
 
@@ -129,6 +125,11 @@ class AbstractEntity implements ResponseInterface
     public static function prefix(): string
     {
         return strtolower(substr(static::class, strrpos(static::class, '\\') + 1));
+    }
+
+    public static function objectName(): string
+    {
+        return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', substr(static::class, strrpos(static::class, '\\') + 1)));
     }
 
     public static function howToExpand(string $propertyName): ?array

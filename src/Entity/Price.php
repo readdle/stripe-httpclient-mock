@@ -29,6 +29,10 @@ class Price extends AbstractEntity
         'unit_amount_decimal' => null,
     ];
 
+    protected static array $expandableProps = [
+        'product',
+    ];
+
     public static function create(string $id, array $props = []): ResponseInterface
     {
         if (array_key_exists('unit_amount', $props) && !array_key_exists('unit_amount_decimal', $props)) {

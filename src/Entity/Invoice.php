@@ -6,6 +6,7 @@ namespace Readdle\StripeHttpClientMock\Entity;
 use Exception;
 use Readdle\StripeHttpClientMock\Collection;
 use Readdle\StripeHttpClientMock\EntityManager;
+use Readdle\StripeHttpClientMock\Error\ResourceMissing;
 use Readdle\StripeHttpClientMock\ResponseInterface;
 
 class Invoice extends AbstractEntity
@@ -122,6 +123,7 @@ class Invoice extends AbstractEntity
                 'amount'   => 1,
                 'currency' => 'usd',
             ]);
+            /** @noinspection PhpPossiblePolymorphicInvocationInspection */
             $props['payment_intent'] = $paymentIntent->id;
         }
 
@@ -137,9 +139,15 @@ class Invoice extends AbstractEntity
 
         if (!array_key_exists('lines', $props)) {
             $lines = new Collection();
+            $pendingInvoiceItems = [];
 
             /** @noinspection SpellCheckingInspection */
-            $pendingInvoiceItems = EntityManager::listEntity('invoiceitem', ['customer' => $props['customer']])->data;
+            $invoiceItems = EntityManager::listEntity('invoiceitem', ['customer' => $props['customer']]);
+
+            if (!$invoiceItems instanceof ResourceMissing) {
+                /** @noinspection PhpPossiblePolymorphicInvocationInspection */
+                $pendingInvoiceItems = $invoiceItems->data;
+            }
 
             if (!empty($pendingInvoiceItems)) {
                 foreach ($pendingInvoiceItems as $pendingInvoiceItem) {

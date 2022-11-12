@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Readdle\StripeHttpClientMock;
 
 use Exception;
-use Readdle\StripeHttpClientMock\Error\AbstractError;
+use JetBrains\PhpStorm\ArrayShape;
 use Readdle\StripeHttpClientMock\Error\Unauthorized;
 use Stripe\ApiResource;
 use Stripe\HttpClient\ClientInterface;
@@ -13,35 +13,55 @@ use Stripe\HttpClient\CurlClient;
 
 final class HttpClient implements ClientInterface
 {
-    public static bool $debug = false;
-    public static bool $sendToStripe = false;
-    public static string $apiKey = '';
+    private static bool $debug = false;
+    private static bool $mock = true;
+
+    private string $apiKey;
+
+    public function __construct(string $apiKey)
+    {
+        $this->apiKey = $apiKey;
+    }
+
+    public static function mock(): void
+    {
+        self::$mock = true;
+    }
+
+    /** @noinspection SpellCheckingInspection */
+    public static function unmock(): void
+    {
+        self::$mock = false;
+    }
+
+    public static function debug(bool $mode = true): void
+    {
+        self::$debug = $mode;
+    }
 
     private static function resolveAction(string $method, bool $idPresent): string
     {
-        switch ($method) {
-            case 'post':
-                return $idPresent ? 'update' : 'create';
-
-            case 'get':
-                return $idPresent ? 'retrieve' : 'list';
-
-            case 'delete':
-                return 'delete';
-
-            default:
-                return '';
-        }
+        return match ($method) {
+            'post' => $idPresent ? 'update' : 'create',
+            'get' => $idPresent ? 'retrieve' : 'list',
+            'delete' => 'delete',
+            default => '',
+        };
     }
 
     private static function resolveEntityName(string $entityName): string
     {
-        return substr($entityName, 0, -1); // remove trailing "s" to make it singular
+        if ($entityName[strlen($entityName) - 1] !== 's') {
+            return $entityName;
+        }
+
+        return substr($entityName, 0, -1); // remove trailing "s" to make entity name singular
     }
 
     /**
      * @throws Exception
      */
+    #[ArrayShape(['action' => 'string', 'entity' => 'string', 'entityId' => 'string', 'filter' => '?array'])]
     private function resolveActionAndEntity(string $method, string $absUrl): array
     {
         $result = [];
@@ -72,6 +92,19 @@ final class HttpClient implements ClientInterface
         }
 
         $result['action'] = self::resolveAction($method, $idPresent);
+
+        if (array_key_exists('subEntity', $result) && array_key_exists('subEntityId', $result)) {
+            // this means that action is actually performed on the related entity,
+            // so we use it as a primary entity to perform operation on it and add filter by main entity's id
+            $result['filter'][$result['entity']] = $result['entityId'];
+            $result['entity'] = $result['subEntity'];
+            $result['entityId'] = $result['subEntityId'];
+            unset($result['subEntity'], $result['subEntityId']);
+        } elseif (array_key_exists('subAction', $result)) {
+            $result['action'] = $result['subAction'];
+            unset($result['subAction']);
+        }
+
         return $result;
     }
 
@@ -88,13 +121,91 @@ final class HttpClient implements ClientInterface
 
     final public function request($method, $absUrl, $headers, $params, $hasFile): array
     {
-        if (self::$debug) {
-            fwrite(STDOUT, "HttpClient: $method -> $absUrl\n\n");
+        self::printf('HttpClient: %s %s', strtoupper($method), $absUrl);
+
+        try {
+            $actionAndEntity = $this->resolveActionAndEntity($method, $absUrl);
+        } catch (Exception) {
+            self::printf('HttpClient: could not resolve action/entity');
         }
 
+        if (isset($actionAndEntity)) {
+            if (isset($actionAndEntity['filter'])) {
+                $params = array_merge($params, $actionAndEntity['filter']);
+            }
+
+            self::printf(
+                'HttpClient: %s %s id=%s %s',
+                $actionAndEntity['action'],
+                $actionAndEntity['entity'],
+                $actionAndEntity['entityId'],
+                $params
+            );
+        }
+
+        if (self::$mock) {
+            if (isset($actionAndEntity)) {
+                [$responseText, $httpStatusCode, $responseHeaders] = $this->requestMocked(
+                    $actionAndEntity['action'],
+                    $actionAndEntity['entity'],
+                    $actionAndEntity['entityId'],
+                    $headers,
+                    $params
+                );
+            } else {
+                $responseText = '{"error":{}}';
+                $httpStatusCode = 500;
+                $responseHeaders = [];
+            }
+
+        } else {
+            [$responseText, $httpStatusCode, $responseHeaders] = $this->requestReal(
+                $method,
+                $absUrl,
+                $headers,
+                $params,
+                $hasFile
+            );
+        }
+
+        self::printf(
+            '%s response (%s): %s',
+            self::$mock ? 'HttpClient' : 'Real Stripe',
+            $httpStatusCode,
+            $responseText
+        );
+
+        return [$responseText, $httpStatusCode, $responseHeaders];
+    }
+
+    private function requestReal($method, $absUrl, $headers, $params, $hasFile): array
+    {
+        [$responseText, $httpStatusCode, $headers] = CurlClient::instance()->request(
+            $method,
+            $absUrl,
+            $headers,
+            $params,
+            $hasFile
+        );
+
+        if (self::$debug) {
+            // minifying to have shorter log
+            $responseText = json_encode(json_decode($responseText, true));
+        }
+
+        return [$responseText, $httpStatusCode, $headers];
+    }
+
+    private function requestMocked(
+        string $action,
+        string $entity,
+        ?string $entityId,
+        array $headers,
+        array $params
+    ): array {
         $extractedApiKey = self::extractApiKey($headers);
 
-        if (!self::$sendToStripe && $extractedApiKey !== self::$apiKey) {
+        if ($extractedApiKey !== $this->apiKey) {
             $error = new Unauthorized($extractedApiKey);
 
             return [
@@ -105,70 +216,27 @@ final class HttpClient implements ClientInterface
         }
 
         try {
-            $actionAndEntity = $this->resolveActionAndEntity($method, $absUrl);
+            $response = EntityManager::handleAction($action, $entity, $entityId, $params);
         } catch (Exception $e) {
+            self::printf("EntityManager exception: %s\n\n%s", $e->getMessage(), $e->getTraceAsString());
             return ['{"error":{}}', 500, []];
         }
 
-        $action = $actionAndEntity['action'];
+        return [$response->toString(), $response->getHttpStatusCode(), []];
+    }
 
-        if (
-            array_key_exists('subEntity', $actionAndEntity)
-            && array_key_exists('subEntityId', $actionAndEntity)
-        ) {
-            // it means that action is actually performed on related entity,
-            // so we use it as primary entity to perform operation and add filter by main entity's id
-            $entity = $actionAndEntity['subEntity'];
-            $entityId = $actionAndEntity['subEntityId'];
-            $params[$actionAndEntity['entity']] = $actionAndEntity['entityId'];
-        } else {
-            $entity = $actionAndEntity['entity'];
-            $entityId = $actionAndEntity['entityId'];
+    public static function printf(string $format, ...$args): void
+    {
+        if (!self::$debug) {
+            return;
+        }
 
-            if (array_key_exists('subAction', $actionAndEntity)) {
-                $action = $actionAndEntity['subAction'];
+        foreach ($args as &$arg) {
+            if (is_array($arg) || is_object($arg)) {
+                $arg = var_export($arg, true);
             }
         }
 
-        if (self::$debug) {
-            fwrite(
-                STDOUT,
-                "HttpClient: $action $entity id=" . var_export($entityId, true)
-                . ' ' . var_export($params, true) . "\n\n"
-            );
-        }
-
-        if (self::$sendToStripe) {
-            [$responseText, $httpStatusCode, $headers] = CurlClient::instance()->request($method, $absUrl, $headers, $params, $hasFile);
-
-            if (self::$debug) {
-                fwrite(
-                    STDOUT,
-                    'Stripe response (' . $httpStatusCode . '): '
-                    . json_encode(json_decode($responseText, true), JSON_PRETTY_PRINT) . "\n\n"
-                );
-            }
-        } else {
-            try {
-                $response = EntityManager::handleAction($action, $entity, $entityId, $params);
-            } catch (Exception $e) {
-                if (self::$debug) {
-                    fwrite(STDOUT, 'EntityManager exception: ' . $e->getMessage() . "\n\n" . $e->getTraceAsString() . "\n\n");
-                }
-
-                return ['{"error":{}}', 500, []];
-            }
-
-            $httpStatusCode = $response->getHttpStatusCode();
-            $responseText = $response->toString();
-            $headers = [];
-
-            if (self::$debug) {
-                fwrite(STDOUT, 'HttpClient response (' . $httpStatusCode . '): ' . $responseText . "\n\n");
-            }
-        }
-
-
-        return [$responseText, $httpStatusCode, $headers];
+        fwrite(STDOUT, vsprintf($format, $args) . "\n\n");
     }
 }

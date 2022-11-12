@@ -39,6 +39,7 @@ class SetupIntent extends AbstractEntity
     {
         if (array_key_exists('mandate_data', $props)) {
             $mandate = EntityManager::createEntity('mandate', $props['mandate_data']);
+            /** @noinspection PhpPossiblePolymorphicInvocationInspection */
             $props['mandate'] = $mandate->id;
             unset($props['mandate_data']);
         }
@@ -46,9 +47,11 @@ class SetupIntent extends AbstractEntity
         if (array_key_exists('payment_method_data', $props)) {
             /** @var PaymentMethod $paymentMethod */
             $paymentMethod = EntityManager::createEntity('payment_method', $props['payment_method_data']);
+            /** @noinspection PhpUndefinedFieldInspection */
             $props['payment_method'] = $paymentMethod->id;
             unset($props['payment_method_data']);
 
+            /** @noinspection PhpUndefinedFieldInspection */
             if ($paymentMethod->type === 'alipay' && array_key_exists('return_url', $props)) {
                 $props['next_action'] = [
                     'alipay_handle_redirect' => [

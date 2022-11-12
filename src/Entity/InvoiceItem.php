@@ -37,12 +37,9 @@ class InvoiceItem extends AbstractEntity
         return 'ii';
     }
 
-    public static function create(string $id, array $props = []): ResponseInterface
+    public static function objectName(): string
     {
-        /** @var AbstractEntity $entity */
-        $entity = parent::create($id, $props);
         /** @noinspection SpellCheckingInspection */
-        $entity->props['object'] = 'invoiceitem';
-        return $entity;
+        return 'invoiceitem';
     }
 }

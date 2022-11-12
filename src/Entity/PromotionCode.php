@@ -27,7 +27,11 @@ class PromotionCode extends AbstractEntity
     {
         /** @var PromotionCode $entity */
         $entity = parent::create($id, $props);
-        $entity->props['code'] = uniqid();
+
+        if (empty($props['code'])) {
+            $entity->props['code'] = uniqid();
+        }
+
         return $entity;
     }
 
