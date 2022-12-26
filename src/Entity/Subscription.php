@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Readdle\StripeHttpClientMock\Entity;
 
+use DateTime;
 use Exception;
 use Readdle\StripeHttpClientMock\Collection;
 use Readdle\StripeHttpClientMock\EntityManager;
@@ -138,6 +139,15 @@ class Subscription extends AbstractEntity
                 ),
                 'currency' => $entity->props['currency'],
             ]);
+        }
+
+        if (
+            empty($entity->props['current_period_start']) &&
+            empty($entity->props['current_period_end'])
+        ) {
+            $dt = new DateTime('now');
+            $entity->props['current_period_start'] = $dt->getTimestamp();
+            $entity->props['current_period_end'] = $dt->modify('+1 year')->getTimestamp();
         }
 
         return $entity;
