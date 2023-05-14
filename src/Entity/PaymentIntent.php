@@ -5,6 +5,7 @@ namespace Readdle\StripeHttpClientMock\Entity;
 
 use Readdle\StripeHttpClientMock\Error\ResourceMissing;
 use Readdle\StripeHttpClientMock\ResponseInterface;
+use Readdle\StripeHttpClientMock\TestCards\TestCardRegistry;
 
 class PaymentIntent extends AbstractEntity
 {
@@ -61,6 +62,7 @@ class PaymentIntent extends AbstractEntity
 
     protected static array $subActions = [
         'cancel' => 'cancel',
+        'confirm' => 'confirm',
     ];
 
     public static function prefix(): string
@@ -83,5 +85,31 @@ class PaymentIntent extends AbstractEntity
         }
 
         return $this;
+    }
+
+    public function confirm(array $params): ResponseInterface
+    {
+        $validStatuses = ['requires_payment_method', 'requires_capture', 'requires_confirmation', 'requires_action', 'processing'];
+
+        $cardRegistry = new TestCardRegistry();
+
+
+        if ($params['payment_method'] ?? false) {
+            $card = $cardRegistry->getCard(null, $params['payment_method']);
+            if ($card) {
+                return $card->createConfirmResult($this);
+            } else {
+                // we let the request go through, because this does not change the default behavior.
+            }
+        }
+
+        if (!in_array($this->props['status'], $validStatuses)) {
+            return new ResourceMissing();
+        }
+
+        $this->props['status'] = 'succeeded';
+
+        return $this;
+
     }
 }
