@@ -8,6 +8,7 @@ use DateTime;
 use Exception;
 use Readdle\StripeHttpClientMock\Collection;
 use Readdle\StripeHttpClientMock\EntityManager;
+use Readdle\StripeHttpClientMock\Error\InvalidRequest;
 
 class Subscription extends AbstractEntity
 {
@@ -90,7 +91,12 @@ class Subscription extends AbstractEntity
                 if (!$subscriptionItem instanceof AbstractEntity) {
                     continue;
                 }
-
+                if (!$subscriptionItem->price?->currency) {
+                    /*
+                     * $price = Price::create()
+                     * */
+                    throw new Exception("You must define a price entity on the subscription item");
+                }
                 $currency = $subscriptionItem->price->currency;
                 $amount += (float) $subscriptionItem->price->unit_amount;
                 $items->add($subscriptionItem);

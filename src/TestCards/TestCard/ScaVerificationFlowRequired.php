@@ -35,6 +35,7 @@ class ScaVerificationFlowRequired implements TestCardInterface
 
         $intent->update([
             "status" => "requires_action",
+            'client_secret' => 'src_client_secret_' . uniqid(),
             "next_action" => [
                 "type" => "use_stripe_sdk",
                 "use_stripe_sdk" => [
