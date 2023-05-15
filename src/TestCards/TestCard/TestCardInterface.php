@@ -18,10 +18,5 @@ interface TestCardInterface
 
     public function createConfirmResult(PaymentIntent $intent): ResponseInterface;
 
-    public function getResponseCode(): int;
-
-    public function getErrorCode(): string;
-
-    public function getMessage(): string;
 
 }

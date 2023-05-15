@@ -5,6 +5,7 @@ namespace Unit;
 
 use PHPUnit\Framework\TestCase;
 use Readdle\StripeHttpClientMock\HttpClient;
+use Readdle\StripeHttpClientMock\TestCards\TestCard\ScaVerificationFlowRequired;
 use Stripe\ApiRequestor;
 use Stripe\Exception\CardException;
 use Stripe\StripeClient;
@@ -55,10 +56,10 @@ class PaymentIntentCardFlowTest extends TestCase
         $this->assertEquals('requires_confirmation', $paymentIntent->status);
 
         try {
-        $this->client->paymentIntents->confirm($paymentIntent->id, [
-            'payment_method' => 'pm_card_visa_chargeDeclined',
-        ]);
-        } catch (CardException $e ) {
+            $this->client->paymentIntents->confirm($paymentIntent->id, [
+                'payment_method' => 'pm_card_visa_chargeDeclined',
+            ]);
+        } catch (CardException $e) {
             $this->assertNotNull($e->getStripeCode());
             $this->assertNotNull($e->getDeclineCode());
 
@@ -67,6 +68,26 @@ class PaymentIntentCardFlowTest extends TestCase
             $this->assertEquals("generic_decline", $paymentIntent->last_payment_error->decline_code);
 
         }
+    }
+
+
+    public function testConfirmWithNextAction()
+    {
+        $paymentIntent = $this->client->paymentIntents->create([
+            'amount' => 1000,
+            'currency' => 'usd',
+            'payment_method_types' => ['card'],
+        ]);
+
+        $this->assertEquals('requires_confirmation', $paymentIntent->status);
+
+        $pi = $this->client->paymentIntents->confirm($paymentIntent->id, [
+            'payment_method' => ScaVerificationFlowRequired::PAYMENT_METHOD,
+        ]);
+
+        $this->assertEquals("requires_action", $pi->status);
+        $this->assertEquals("use_stripe_sdk", $pi->next_action->type);
+        $this->assertEquals("src_1GxJ5a2eZvKYlo2CJ9jQYQ4X", $pi->next_action->use_stripe_sdk->source);
     }
 
 }
