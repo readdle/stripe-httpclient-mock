@@ -12,11 +12,12 @@ use Readdle\StripeHttpClientMock\Error\CardError;
  */
 class VisaChargeDeclined extends AbstractTestCardErrorResult implements TestCardInterface
 {
+    public const CARD_NUMBER = "4000000000000002";
+    public const PAYMENT_METHOD = "pm_card_visa_chargeDeclined";
+l
+
     protected string $errorCode = "card_declined";
     protected string $declineCode = "generic_decline";
-
-    protected string $cardNumber = "4000000000000002";
-    protected string $paymentMethod = "pm_card_visa_chargeDeclined";
 
     protected string $errorMessage = "Your card was declined.";
 
