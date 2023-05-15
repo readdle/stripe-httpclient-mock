@@ -4,6 +4,7 @@ namespace Unit;
 
 
 use PHPUnit\Framework\TestCase;
+use Readdle\StripeHttpClientMock\Entity\Price;
 use Readdle\StripeHttpClientMock\HttpClient;
 use Readdle\StripeHttpClientMock\TestCards\TestCard\ScaVerificationFlowRequired;
 use Stripe\ApiRequestor;
@@ -92,6 +93,18 @@ class PaymentIntentCardFlowTest extends TestCase
             $this->assertEquals("generic_decline", $paymentIntent->last_payment_error->decline_code);
 
         }
+    }
+
+    public function testCreateSubscription(){
+        // Shows what is needed to create a subscription.
+        $price = $this->client->prices->create(['unit_amount' => 1000, 'currency' => 'usd']);
+        $customer = $this->client->customers->create([]);
+        $this->client->subscriptions->create([    'customer' => $customer->id,
+                                                  'items' => [
+                                                    ['price' => $price->id,'amount' => 1]
+                                                  ],
+                                                  'metadata' => ['courseId' => 1],
+        ]);
     }
 
 
