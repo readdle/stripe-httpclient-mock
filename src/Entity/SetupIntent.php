@@ -6,6 +6,7 @@ namespace Readdle\StripeHttpClientMock\Entity;
 use Exception;
 use Readdle\StripeHttpClientMock\EntityManager;
 use Readdle\StripeHttpClientMock\ResponseInterface;
+use Readdle\StripeHttpClientMock\TestCards\TestCard\ScaVerificationFlowRequired;
 
 class SetupIntent extends AbstractEntity
 {
@@ -60,6 +61,23 @@ class SetupIntent extends AbstractEntity
                 ];
             }
         }
+
+        if (!$props['payment_method']) {
+            $props['status'] = 'payment_method_required';
+        } elseif ($props['payment_method'] === ScaVerificationFlowRequired::PAYMENT_METHOD) {
+            $props['next_action'] = [
+                "type" => "use_stripe_sdk",
+                "use_stripe_sdk" => [
+                    "type" => "three_d_secure_redirect",
+                    "stripe_js" => "https://hooks.stripe-mock.com/redirect/authenticate/src_ddd?client_secret=src_client_secret_GxJ5a2eZvKYlo2CJ9jQYQ4X",
+                    "source" => "src_1GxJ5a2eZvKYlo2CJ9jQYQ4X",
+                ],
+            ];
+            $props['status'] = 'requires_action';
+        } elseif (!$props['confirm'] ) {
+            $props['status'] = 'requires_confirmation';
+        }
+
 
         return parent::create($id, $props);
     }
