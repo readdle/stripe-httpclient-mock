@@ -93,9 +93,10 @@ class PaymentIntent extends AbstractEntity
 
         $cardRegistry = new TestCardRegistry();
 
+        $paymentMethod = $params['payment_method'] ?? $this->props['payment_method'] ?? null;
 
-        if ($params['payment_method'] ?? false) {
-            $card = $cardRegistry->getCard(null, $params['payment_method']);
+        if ($paymentMethod) {
+            $card = $cardRegistry->getCard(null, $paymentMethod);
             if ($card) {
                 return $card->createConfirmResult($this);
             } else {

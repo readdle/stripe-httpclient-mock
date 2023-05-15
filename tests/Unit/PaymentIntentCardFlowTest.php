@@ -70,6 +70,30 @@ class PaymentIntentCardFlowTest extends TestCase
         }
     }
 
+    public function testSetPaymentMethodOnPiNotInConfirmMethod()
+    {
+        $paymentIntent = $this->client->paymentIntents->create([
+            'amount' => 1000,
+            'currency' => 'usd',
+            'payment_method_types' => ['card'],
+            'payment_method'=> 'pm_card_visa_chargeDeclined',
+        ]);
+
+        $this->assertEquals('requires_confirmation', $paymentIntent->status);
+
+        try {
+            $this->client->paymentIntents->confirm($paymentIntent->id, []);
+        } catch (CardException $e) {
+            $this->assertNotNull($e->getStripeCode());
+            $this->assertNotNull($e->getDeclineCode());
+
+            $paymentIntent = $this->client->paymentIntents->retrieve($paymentIntent->id);
+            $this->assertEquals("requires_payment_method", $paymentIntent->status);
+            $this->assertEquals("generic_decline", $paymentIntent->last_payment_error->decline_code);
+
+        }
+    }
+
 
     public function testConfirmWithNextAction()
     {

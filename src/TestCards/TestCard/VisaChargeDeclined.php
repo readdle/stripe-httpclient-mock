@@ -14,8 +14,9 @@ class VisaChargeDeclined extends AbstractTestCardErrorResult implements TestCard
 {
     public const CARD_NUMBER = "4000000000000002";
     public const PAYMENT_METHOD = "pm_card_visa_chargeDeclined";
-l
 
+    protected string $cardNumber = self::CARD_NUMBER;
+    protected string $paymentMethod = self::PAYMENT_METHOD;
     protected string $errorCode = "card_declined";
     protected string $declineCode = "generic_decline";
 
