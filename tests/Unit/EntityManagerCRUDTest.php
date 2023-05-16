@@ -80,4 +80,26 @@ class EntityManagerCRUDTest extends TestCase
         $assertError(EntityManager::updateEntity('promotion_code', 'id', []));
         $assertError(EntityManager::deleteEntity('promotion_code', 'id'));
     }
+
+    public function testLogsInfo(): void
+    {
+        $logger = $this->createMock(\Stripe\Util\LoggerInterface::class);
+        $logger->expects($this->exactly(3))->method('error');
+        \Stripe\Stripe::setLogger($logger);
+
+        $assertError = function ($result) {
+            /** @var ResourceMissing $result */
+            $this->assertNotEmpty($result);
+            $this->assertInstanceOf(ResourceMissing::class, $result);
+            $this->assertIsArray($result->error);
+            $this->assertArrayHasKey('code', $result->error);
+            $this->assertEquals('resource_missing', $result->error['code']);
+            $this->assertArrayHasKey('type', $result->error);
+            $this->assertEquals('invalid_request_error', $result->error['type']);
+        };
+
+        $assertError(EntityManager::retrieveEntity('promotion_code', 'id'));
+        $assertError(EntityManager::updateEntity('promotion_code', 'id', []));
+        $assertError(EntityManager::deleteEntity('promotion_code', 'id'));
+    }
 }
