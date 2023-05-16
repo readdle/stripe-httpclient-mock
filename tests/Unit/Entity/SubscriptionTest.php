@@ -58,18 +58,47 @@ class SubscriptionTest extends TestCase
             'amount' => 100
         ]);
 
+
+
         $customer = $client->customers->create([]);
         $subscription = $client->subscriptions->create([
             'customer' => $customer->id,
             'items' => [
                 [ 'amount' => 1, 'plan' => $plan->id,],
             ],
-            'metadata' => ['courseId' => 1],
+            'metadata' => [],
         ]);
 
         $this->assertNotNull($subscription);
         $invoice = $client->invoices->retrieve($subscription->latest_invoice);
         $this->assertEquals(100, $invoice->total);
+
+    }
+
+    public function testCancelSubscriptionWithPlan(){
+
+        ApiRequestor::setHttpClient(new HttpClient('key'));
+        $client = new StripeClient('key');
+
+        $plan = $client->plans->create([
+            'currency' => 'pnd',
+            'amount' => 100
+        ]);
+
+        $customer = $client->customers->create([]);
+        $subscription = $client->subscriptions->create([
+            'customer' => $customer->id,
+            'items' => [
+                [ 'amount' => 1, 'plan' => $plan->id,],
+            ],
+            'metadata' => [],
+        ]);
+
+        $this->assertNotNull($subscription);
+
+        $canceledSubscription = $client->subscriptions->cancel($subscription->id);
+
+        $this->assertEquals('canceled', $canceledSubscription->status);
 
     }
 }

@@ -9,6 +9,8 @@ use Exception;
 use Readdle\StripeHttpClientMock\Collection;
 use Readdle\StripeHttpClientMock\EntityManager;
 use Readdle\StripeHttpClientMock\Error\InvalidRequest;
+use Readdle\StripeHttpClientMock\Error\ResourceMissing;
+use Readdle\StripeHttpClientMock\ResponseInterface;
 
 class Subscription extends AbstractEntity
 {
@@ -58,6 +60,20 @@ class Subscription extends AbstractEntity
         'trial_end'                         => null,
         'trial_start'                       => null,
     ];
+
+    public function cancel(): ResponseInterface
+    {
+        $validStatuses = ['active', 'past_due', 'unpaid', 'incomplete', 'incomplete_expired', 'trialing'];
+
+
+        if (!in_array($this->props['status'], $validStatuses)) {
+            return new ResourceMissing();
+        }
+
+        $this->props['status'] = \Stripe\Subscription::STATUS_CANCELED;
+
+        return $this;
+    }
 
     /**
      * @throws Exception
