@@ -62,7 +62,7 @@ class SetupIntent extends AbstractEntity
             }
         }
 
-        if (!$props['payment_method']) {
+        if (!($props['payment_method'] ?? false)) {
             $props['status'] = 'payment_method_required';
         } elseif ($props['payment_method'] === ScaVerificationFlowRequired::PAYMENT_METHOD) {
             $props['next_action'] = [

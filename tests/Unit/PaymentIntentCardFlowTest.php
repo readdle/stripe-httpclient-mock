@@ -28,6 +28,18 @@ class PaymentIntentCardFlowTest extends TestCase
         $this->client = new StripeClient('key');
     }
 
+    public function testSetupIntent(){
+
+        $intent = $this->client->setupIntents->create([
+            'amount' => 1000,
+            'currency' => 'usd',
+            'payment_method_types' => ['card'],
+        ]);
+
+        $this->assertEquals('payment_method_required', $intent->status);
+
+    }
+
     public function testSimpleConfirmSuccess()
     {
         $paymentIntent = $this->client->paymentIntents->create([
