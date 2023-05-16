@@ -106,6 +106,7 @@ class Invoice extends AbstractEntity
         'finalize' => 'finalize',
         'void'     => 'void',
         'upcoming' => 'getUpcomingInvoice',
+        'pay' => 'pay',
     ];
 
     public static function prefix(): string
@@ -238,5 +239,11 @@ class Invoice extends AbstractEntity
         $invoice->props['lines'] = $lines->toArray();
 
         return $invoice;
+    }
+
+    public function pay($invoiceId)
+    {
+        $this->props['status'] = 'paid';
+        return $this;
     }
 }
