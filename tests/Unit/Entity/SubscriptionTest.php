@@ -8,6 +8,9 @@ use Exception;
 use PHPUnit\Framework\TestCase;
 use Readdle\StripeHttpClientMock\Entity\Customer;
 use Readdle\StripeHttpClientMock\Entity\Subscription;
+use Readdle\StripeHttpClientMock\HttpClient;
+use Stripe\ApiRequestor;
+use Stripe\StripeClient;
 
 class SubscriptionTest extends TestCase
 {
@@ -43,5 +46,30 @@ class SubscriptionTest extends TestCase
 
         $this->assertEquals($periodStart, $subscription->current_period_start);
         $this->assertEquals($periodEnd, $subscription->current_period_end);
+    }
+
+    public function testCreateSubscriptionWithPlan(){
+
+        ApiRequestor::setHttpClient(new HttpClient('key'));
+        $client = new StripeClient('key');
+
+        $plan = $client->plans->create([
+            'currency' => 'pnd',
+            'amount' => 100
+        ]);
+
+        $customer = $client->customers->create([]);
+        $subscription = $client->subscriptions->create([
+            'customer' => $customer->id,
+            'items' => [
+                [ 'amount' => 1, 'plan' => $plan->id,],
+            ],
+            'metadata' => ['courseId' => 1],
+        ]);
+
+        $this->assertNotNull($subscription);
+        $invoice = $client->invoices->retrieve($subscription->latest_invoice);
+        $this->assertEquals(100, $invoice->total);
+
     }
 }

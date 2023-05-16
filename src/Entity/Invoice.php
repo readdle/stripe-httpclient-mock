@@ -241,8 +241,28 @@ class Invoice extends AbstractEntity
         return $invoice;
     }
 
-    public function pay($invoiceId)
+    public function pay($args)
     {
+
+        if ($this->props['payment_intent'] ?? false) {
+            /** @var PaymentIntent $paymentIntent */
+            $paymentIntent = EntityManager::retrieveEntity('payment_intent', $this->props['payment_intent']);
+
+
+        }  else {
+            $paymentIntent = EntityManager::createEntity('payment_intent', $args);
+            $this->props['payment_intent'] = $paymentIntent->id;
+        }
+
+        $result = $paymentIntent->confirm($args);
+
+        if ($paymentIntent->status == 'succeeded') {
+            $this->props['status'] = 'paid';
+            return $this;
+        }
+        if ($paymentIntent->status == 'requires_action') {
+            return $paymentIntent;
+        }
         $this->props['status'] = 'paid';
         return $this;
     }

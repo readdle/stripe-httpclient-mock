@@ -20,6 +20,7 @@ final class EntityManager
         'mandate'        => [],
         'payment_intent' => [],
         'payment_method' => [],
+        'plan'           => [],
         'price'          => [],
         'product'        => [],
         'promotion_code' => [],
@@ -28,6 +29,7 @@ final class EntityManager
         'subscription'   => [],
         'tax_id'         => [],
         'tax_rate'       => [],
+
     ];
 
     /**

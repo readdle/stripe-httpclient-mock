@@ -91,14 +91,18 @@ class Subscription extends AbstractEntity
                 if (!$subscriptionItem instanceof AbstractEntity) {
                     continue;
                 }
-                if (!$subscriptionItem->price?->currency) {
-                    /*
-                     * $price = Price::create()
-                     * */
-                    throw new Exception("You must define a price entity on the subscription item");
+                if (!$subscriptionItem->price) {
+                    if ($subscriptionItem->plan) {
+                        $plan = EntityManager::retrieveEntity('plan', $subscriptionItem->plan);
+                        $amount += (float) $plan->amount;
+                        $currency = $plan->currency;
+                    } else {
+                        throw new Exception("You must define a price or plan on the subscription item");
+                    }
+                } else {
+                    $amount += (float) $subscriptionItem->price->unit_amount;
+                    $currency = $subscriptionItem->price->currency;
                 }
-                $currency = $subscriptionItem->price->currency;
-                $amount += (float) $subscriptionItem->price->unit_amount;
                 $items->add($subscriptionItem);
             }
 
@@ -138,11 +142,7 @@ class Subscription extends AbstractEntity
 
         if ($paymentIntent instanceof AbstractEntity) {
             $paymentIntent->update([
-                'amount' => array_reduce(
-                    $entity->props['items']['data'],
-                    fn ($sum, $item) => $sum + $item['price']['unit_amount'],
-                    0
-                ),
+                'amount' => $amount,
                 'currency' => $entity->props['currency'],
             ]);
         }
