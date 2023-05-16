@@ -99,12 +99,16 @@ class PaymentIntentCardFlowTest extends TestCase
         // Shows what is needed to create a subscription.
         $price = $this->client->prices->create(['unit_amount' => 1000, 'currency' => 'usd']);
         $customer = $this->client->customers->create([]);
-        $this->client->subscriptions->create([    'customer' => $customer->id,
+        $subscription = $this->client->subscriptions->create([    'customer' => $customer->id,
                                                   'items' => [
                                                     ['price' => $price->id,'amount' => 1]
                                                   ],
                                                   'metadata' => ['courseId' => 1],
         ]);
+
+
+        $this->assertNotNull($subscription->id);
+
     }
 
 
