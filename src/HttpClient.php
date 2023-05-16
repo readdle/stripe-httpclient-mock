@@ -219,7 +219,7 @@ final class HttpClient implements ClientInterface
             $response = EntityManager::handleAction($action, $entity, $entityId, $params);
         } catch (Exception $e) {
             self::printf("EntityManager exception: %s\n\n%s", $e->getMessage(), $e->getTraceAsString());
-            return ['{"error":{}}', 500, []];
+            return [json_encode(['error' => $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine()]), 500, []];
         }
 
         return [$response->toString(), $response->getHttpStatusCode(), []];
@@ -227,7 +227,7 @@ final class HttpClient implements ClientInterface
 
     public static function printf(string $format, ...$args): void
     {
-        if (!self::$debug) {
+        if (!self::$debug || !\Stripe\Stripe::getLogger()) {
             return;
         }
 
@@ -237,6 +237,11 @@ final class HttpClient implements ClientInterface
             }
         }
 
-        fwrite(STDOUT, vsprintf($format, $args) . "\n\n");
+        if (self::$debug) {
+            fwrite(STDOUT, vsprintf($format, $args) . "\n\n");
+        }
+        if (\Stripe\Stripe::getLogger()) {
+            \Stripe\Stripe::getLogger()->error(vsprintf($format, $args));
+        }
     }
 }
