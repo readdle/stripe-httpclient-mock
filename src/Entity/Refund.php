@@ -25,9 +25,15 @@ class Refund extends AbstractEntity
         'transfer_reversal' => null, //  * @property null|string|\Stripe\TransferReversal If the accompanying transfer was reversed, the transfer reversal object. Only applicable if the charge was created using the destination parameter.
     ];
 
+
+
     protected static array $expandableProps = [
         'balance_transaction','payment_intent'
     ];
 
+    public static function prefix(): string
+    {
+        return 're';
+    }
 
 }
