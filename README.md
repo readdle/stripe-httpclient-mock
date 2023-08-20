@@ -37,9 +37,9 @@ Nothing special here, just use composer to install the package:
 
 Usage is as simple as two lines of code in bootstrap script of your PHPUnit configuration:
 
->Readdle\StripeHttpClientMock\HttpClient::$apiKey = "your_api_key_goes_here";
+>\Readdle\StripeHttpClientMock\HttpClient::$apiKey = "your_api_key_goes_here";
 > 
->Stripe\ApiRequestor\ApiRequestor::setHttpClient(new Readdle\StripeHttpClientMock\HttpClient());
+>\Stripe\ApiRequestor\ApiRequestor::setHttpClient(new Readdle\StripeHttpClientMock\HttpClient());
 
 That's it, now you have your instance of `stripe-php`'s HTTP client mocked, and it will "communicate" with a
 piece of code instead of performing real HTTP requests.
@@ -157,3 +157,10 @@ this result, so there are two preferred ways of sorting it out:
 - improve the library and create a pull request with code which covers this specific case
 
 Both options would be **highly** appreciated and the reaction will follow as soon as it possible.
+
+
+#### Testing
+
+To run the tests, just execute:
+
+`vendor/bin/phpunit  -c tests/phpunit.xml`

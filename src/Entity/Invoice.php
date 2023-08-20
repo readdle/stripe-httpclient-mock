@@ -106,6 +106,7 @@ class Invoice extends AbstractEntity
         'finalize' => 'finalize',
         'void'     => 'void',
         'upcoming' => 'getUpcomingInvoice',
+        'pay' => 'pay',
     ];
 
     public static function prefix(): string
@@ -238,5 +239,31 @@ class Invoice extends AbstractEntity
         $invoice->props['lines'] = $lines->toArray();
 
         return $invoice;
+    }
+
+    public function pay($args)
+    {
+
+        if ($this->props['payment_intent'] ?? false) {
+            /** @var PaymentIntent $paymentIntent */
+            $paymentIntent = EntityManager::retrieveEntity('payment_intent', $this->props['payment_intent']);
+
+
+        }  else {
+            $paymentIntent = EntityManager::createEntity('payment_intent', $args);
+            $this->props['payment_intent'] = $paymentIntent->id;
+        }
+
+        $result = $paymentIntent->confirm($args);
+
+        if ($paymentIntent->status == 'succeeded') {
+            $this->props['status'] = 'paid';
+            return $this;
+        }
+        if ($paymentIntent->status == 'requires_action') {
+            return $paymentIntent;
+        }
+        $this->props['status'] = 'paid';
+        return $this;
     }
 }

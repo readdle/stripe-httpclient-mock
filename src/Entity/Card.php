@@ -28,4 +28,5 @@ class Card extends AbstractEntity
         'name'                => null,
         'tokenization_method' => null,
     ];
+
 }

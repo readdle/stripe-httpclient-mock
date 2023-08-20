@@ -5,6 +5,7 @@ namespace Readdle\StripeHttpClientMock\Entity;
 
 use Exception;
 use Readdle\StripeHttpClientMock\Collection;
+use Readdle\StripeHttpClientMock\Error\ResourceMissing;
 use Readdle\StripeHttpClientMock\ResponseInterface;
 
 class AbstractEntity implements ResponseInterface
@@ -86,7 +87,7 @@ class AbstractEntity implements ResponseInterface
     public function subAction(string $action, array $params): ResponseInterface
     {
         if (!array_key_exists($action, static::$subActions)) {
-            throw new Exception();
+            return new ResourceMissing("Unknown sub-action '{$action}' for entity '" . static::objectName() . "'.");
         }
 
         return call_user_func([$this, static::$subActions[$action]], $params);

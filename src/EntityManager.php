@@ -7,6 +7,7 @@ use Exception;
 use Readdle\StripeHttpClientMock\Entity\AbstractEntity;
 use Readdle\StripeHttpClientMock\Error\ResourceMissing;
 use Readdle\StripeHttpClientMock\Success\Deleted;
+use Stripe\Subscription;
 
 final class EntityManager
 {
@@ -20,6 +21,7 @@ final class EntityManager
         'mandate'        => [],
         'payment_intent' => [],
         'payment_method' => [],
+        'plan'           => [],
         'price'          => [],
         'product'        => [],
         'promotion_code' => [],
@@ -28,6 +30,7 @@ final class EntityManager
         'subscription'   => [],
         'tax_id'         => [],
         'tax_rate'       => [],
+
     ];
 
     /**
@@ -177,6 +180,15 @@ final class EntityManager
         ) {
             return new ResourceMissing();
         }
+
+        if ($entityName == 'subscription') {
+            $subscription = self::$entities[$entityName][$entityId];
+            if ($subscription->status !== Subscription::STATUS_CANCELED) {
+                $subscription->cancel();
+                return $subscription;
+            }
+        }
+
 
         unset(self::$entities[$entityName][$entityId]);
         $deleted = new Deleted();

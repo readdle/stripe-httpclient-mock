@@ -8,6 +8,9 @@ use DateTime;
 use Exception;
 use Readdle\StripeHttpClientMock\Collection;
 use Readdle\StripeHttpClientMock\EntityManager;
+use Readdle\StripeHttpClientMock\Error\InvalidRequest;
+use Readdle\StripeHttpClientMock\Error\ResourceMissing;
+use Readdle\StripeHttpClientMock\ResponseInterface;
 
 class Subscription extends AbstractEntity
 {
@@ -58,6 +61,20 @@ class Subscription extends AbstractEntity
         'trial_start'                       => null,
     ];
 
+    public function cancel(): ResponseInterface
+    {
+        $validStatuses = ['active', 'past_due', 'unpaid', 'incomplete', 'incomplete_expired', 'trialing'];
+
+
+        if (!in_array($this->props['status'], $validStatuses)) {
+            return new ResourceMissing();
+        }
+
+        $this->props['status'] = \Stripe\Subscription::STATUS_CANCELED;
+
+        return $this;
+    }
+
     /**
      * @throws Exception
      */
@@ -90,9 +107,18 @@ class Subscription extends AbstractEntity
                 if (!$subscriptionItem instanceof AbstractEntity) {
                     continue;
                 }
-
-                $currency = $subscriptionItem->price->currency;
-                $amount += (float) $subscriptionItem->price->unit_amount;
+                if (!$subscriptionItem->price) {
+                    if ($subscriptionItem->plan) {
+                        $plan = EntityManager::retrieveEntity('plan', $subscriptionItem->plan);
+                        $amount += (float) $plan->amount;
+                        $currency = $plan->currency;
+                    } else {
+                        throw new Exception("You must define a price or plan on the subscription item");
+                    }
+                } else {
+                    $amount += (float) $subscriptionItem->price->unit_amount;
+                    $currency = $subscriptionItem->price->currency;
+                }
                 $items->add($subscriptionItem);
             }
 
@@ -132,11 +158,7 @@ class Subscription extends AbstractEntity
 
         if ($paymentIntent instanceof AbstractEntity) {
             $paymentIntent->update([
-                'amount' => array_reduce(
-                    $entity->props['items']['data'],
-                    fn ($sum, $item) => $sum + $item['price']['unit_amount'],
-                    0
-                ),
+                'amount' => $amount,
                 'currency' => $entity->props['currency'],
             ]);
         }
