@@ -21,6 +21,7 @@ class PaymentIntent extends AbstractEntity
         'cancellation_reason'         => null,
         'capture_method'              => '',
         'charges'                     => [],
+        'latest_charge'               => null,
         'client_secret'               => '',
         'confirmation_method'         => '',
         'created'                     => 0,

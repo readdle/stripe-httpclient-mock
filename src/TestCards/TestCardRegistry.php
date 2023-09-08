@@ -6,6 +6,7 @@ namespace Readdle\StripeHttpClientMock\TestCards;
 use Readdle\StripeHttpClientMock\TestCards\TestCard\ScaVerificationFlowRequired;
 use Readdle\StripeHttpClientMock\TestCards\TestCard\TestCardInterface;
 use Readdle\StripeHttpClientMock\TestCards\TestCard\VisaChargeDeclined;
+use Readdle\StripeHttpClientMock\TestCards\TestCard\VisaSuccess;
 
 /**
  * User: tarjei
@@ -20,7 +21,8 @@ class TestCardRegistry
     {
         $this->cards = [
             new VisaChargeDeclined(),
-            new ScaVerificationFlowRequired()
+            new ScaVerificationFlowRequired(),
+            new VisaSuccess()
         ];
     }
 
