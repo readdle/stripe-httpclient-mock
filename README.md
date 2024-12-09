@@ -1,5 +1,7 @@
 # About this project
 
+This is a fork of `readdle/stripe-httpclient-mock`. Kudos to them for most of the hard work!
+
 This is pretty raw library which is aimed to provide full HTTP client mock for `stripe-php` library in order to
 perform tests without actually sending HTTP requests to Stripe.
 
