@@ -20,7 +20,7 @@ class Subscription extends AbstractEntity
         'billing_cycle_anchor'              => null,
         'billing_thresholds'                => null,
         'cancel_at'                         => null,
-        'cancel_at_period_end'              => null,
+        'cancel_at_period_end'              => false,
         'canceled_at'                       => null,
         'collection_method'                 => null,
         'created'                           => null,
