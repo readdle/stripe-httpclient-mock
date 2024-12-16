@@ -119,7 +119,7 @@ final class HttpClient implements ClientInterface
         return '';
     }
 
-    final public function request($method, $absUrl, $headers, $params, $hasFile): array
+    final public function request($method, $absUrl, $headers, $params, $hasFile, $apiMode = 'v1'): array
     {
         self::printf('HttpClient: %s %s', strtoupper($method), $absUrl);
 
