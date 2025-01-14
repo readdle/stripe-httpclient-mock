@@ -177,6 +177,10 @@ class Subscription extends AbstractEntity
                     return $matchingInvoices[array_key_last($matchingInvoices)];
                 }
             ],
+            'customer' => [
+                'target' => 'expandableProp',
+                'object' => $propertyName
+            ]
         ];
 
         return array_key_exists($propertyName, $expandMap) ? $expandMap[$propertyName] : null;
