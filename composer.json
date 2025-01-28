@@ -1,5 +1,5 @@
 {
-    "name": "tarjei/stripe-httpclient-mock",
+    "name": "readdle/stripe-httpclient-mock",
     "description": "Mock of Stripe's HttpClient which can be used in testing purposes in order to test your code and not to perform actual HTTP requests",
     "type": "library",
     "license": "MIT",
