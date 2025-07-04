@@ -137,10 +137,10 @@ class Invoice extends AbstractEntity
             );
         }
 
-        $lines = new Collection();
-        $pendingInvoiceItems = [];
-
         if (!array_key_exists('lines', $props)) {
+            $lines = new Collection();
+            $pendingInvoiceItems = [];
+
             /** @noinspection SpellCheckingInspection */
             $invoiceItems = EntityManager::listEntity('invoiceitem', ['customer' => $props['customer']]);
 
@@ -154,9 +154,9 @@ class Invoice extends AbstractEntity
                     $lines->add(LineItem::createFromInvoiceItem($pendingInvoiceItem));
                 }
             }
-        }
 
-        $props['lines'] = $lines->toArray();
+            $props['lines'] = $lines->toArray();
+        }
 
         return parent::create($id, $props);
     }
