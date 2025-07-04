@@ -159,7 +159,7 @@ final class EntityManager
             !array_key_exists($entityName, self::$entities)
             || !array_key_exists($entityId, self::$entities[$entityName])
         ) {
-            return new ResourceMissing();
+            return new ResourceMissing("No such $entityName: '$entityId'", $entityName);
         }
 
         if ($whatToExpand) {
