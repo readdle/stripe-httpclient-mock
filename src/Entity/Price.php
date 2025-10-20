@@ -27,6 +27,7 @@ class Price extends AbstractEntity
         'type'                => 'one_time',
         'unit_amount'         => null,
         'unit_amount_decimal' => null,
+        'currency_options'    => null,
     ];
 
     protected static array $expandableProps = [
