@@ -103,9 +103,9 @@ class Invoice extends AbstractEntity
     ];
 
     protected static array $subActions = [
-        'finalize' => 'finalize',
-        'void'     => 'void',
-        'upcoming' => 'getUpcomingInvoice',
+        'finalize'       => 'finalize',
+        'void'           => 'void',
+        'create_preview' => 'getUpcomingInvoice',
     ];
 
     public static function prefix(): string
@@ -180,7 +180,7 @@ class Invoice extends AbstractEntity
     {
         $parsedTail = parent::parseUrlTail($tail);
 
-        if (array_key_exists('entityId', $parsedTail) && $parsedTail['entityId'] === 'upcoming') {
+        if (array_key_exists('entityId', $parsedTail) && $parsedTail['entityId'] === 'create_preview') {
             $parsedTail['subAction'] = $parsedTail['entityId'];
             $parsedTail['entityId'] = null;
         }
@@ -211,7 +211,7 @@ class Invoice extends AbstractEntity
         $invoice = self::create('', ['customer' => $params['customer']]);
         $lines = new Collection();
 
-        $items = $params['invoice_items'] ?? $params['subscription_items'] ?? [];
+        $items = $params['invoice_items'] ?? $params['subscription_details']['items'] ?? [];
 
         foreach ($items as $invoiceItemData) {
             if (array_key_exists('price', $invoiceItemData)) {
