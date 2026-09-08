@@ -26,7 +26,6 @@ class PaymentIntent extends AbstractEntity
         'currency'                    => '',
         'customer'                    => null,
         'description'                 => null,
-        'invoice'                     => null,
         'last_payment_error'          => null,
         'livemode'                    => false,
         'metadata'                    => [],
@@ -56,7 +55,6 @@ class PaymentIntent extends AbstractEntity
 
     protected static array $expandableProps = [
         'payment_method',
-        'invoice',
     ];
 
     protected static array $subActions = [
