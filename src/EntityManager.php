@@ -5,6 +5,7 @@ namespace Readdle\StripeHttpClientMock;
 
 use Exception;
 use Readdle\StripeHttpClientMock\Entity\AbstractEntity;
+use Readdle\StripeHttpClientMock\Entity\Invoice;
 use Readdle\StripeHttpClientMock\Error\ResourceMissing;
 use Readdle\StripeHttpClientMock\Success\Deleted;
 
@@ -119,6 +120,10 @@ final class EntityManager
 
     public static function listEntity(string $entityName, array $filters): ResponseInterface
     {
+        if ($entityName === 'invoice_payment') {
+            return self::listInvoicePayments($filters);
+        }
+
         if (array_key_exists('expand', $filters)) {
             $whatToExpand = $filters['expand'];
             unset($filters['expand']);
@@ -144,6 +149,44 @@ final class EntityManager
         }
 
         return $collection;
+    }
+
+    /**
+     * Simulates GET /v1/invoice_payments. Charge/PaymentIntent no longer carry a direct `invoice`
+     * back-reference (Stripe API "Basil"), so this is how the library's consumers are meant to find
+     * the invoice for a payment_intent - see Invoice::toInvoicePaymentEntity(). There's no persisted
+     * invoice_payment store: results are derived on demand from the current state of all invoices.
+     */
+    private static function listInvoicePayments(array $filters): Collection
+    {
+        $paymentIntentFilter = $filters['payment']['payment_intent'] ?? null;
+        $limit = $filters['limit'] ?? 10;
+
+        $matches = [];
+
+        foreach (self::$entities['invoice'] ?? [] as $invoice) {
+            /** @var \Readdle\StripeHttpClientMock\Entity\Invoice $invoice */
+            $invoicePayment = $invoice->toInvoicePaymentEntity(true);
+
+            if ($invoicePayment === null) {
+                continue;
+            }
+
+            $paymentIntentValue = $invoicePayment->payment['payment_intent'] ?? null;
+            $paymentIntentId = is_array($paymentIntentValue) ? ($paymentIntentValue['id'] ?? null) : $paymentIntentValue;
+
+            if ($paymentIntentFilter !== null && $paymentIntentId !== $paymentIntentFilter) {
+                continue;
+            }
+
+            $matches[] = $invoicePayment;
+
+            if (count($matches) === $limit) {
+                break;
+            }
+        }
+
+        return new Collection($matches, false, '/v1/invoice_payments');
     }
 
     public static function retrieveEntity(string $entityName, string $entityId, array $params = []): ResponseInterface
@@ -317,6 +360,14 @@ final class EntityManager
         $clone = clone $entity;
 
         foreach ($whatToExpand as $target) {
+            // `parent.subscription_details.subscription` isn't a plain prop path the generic walker
+            // below can follow (`parent` is computed at Invoice::toArray() time, not stored in
+            // $props), so it's special-cased here instead - see Invoice::markSubscriptionExpanded().
+            if ($clone instanceof Invoice && $target === 'parent.subscription_details.subscription') {
+                $clone->markSubscriptionExpanded();
+                continue;
+            }
+
             $path = explode('.', $target);
             $pointer = $clone;
 

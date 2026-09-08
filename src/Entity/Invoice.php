@@ -176,6 +176,114 @@ class Invoice extends AbstractEntity
         return parent::update($props);
     }
 
+    /**
+     * Real Stripe only turns `parent.subscription_details.subscription` into a full Subscription
+     * object when it's explicitly expanded (it's a plain string ID by default, same as the old
+     * `subscription` field). EntityManager::expand() special-cases this path (it isn't a plain prop
+     * the generic expand walker can follow) and calls this to record that this specific instance was
+     * expanded, since $props alone can't tell toArray() whether to embed the string or the object.
+     */
+    private bool $subscriptionExpanded = false;
+
+    public function markSubscriptionExpanded(): void
+    {
+        $this->subscriptionExpanded = true;
+    }
+
+    /**
+     * Stripe API "Basil" (2025-03-31) removed the top level `subscription`, `charge`, `payment_intent`
+     * and `tax` fields from the Invoice object. We keep them as internal props above (existing code in
+     * this library - e.g. Subscription::create(), the `subscription`/`coupon` list filters - still reads
+     * and writes them directly), but the wire response needs to reflect the new shape, so it's computed
+     * here instead of being part of $props.
+     */
+    public function toArray(): array
+    {
+        $array = parent::toArray();
+
+        $subscriptionId = $array['subscription'] ?? null;
+        $taxAmount = $array['tax'] ?? null;
+        unset($array['subscription'], $array['charge'], $array['payment_intent'], $array['tax']);
+
+        $subscriptionValue = $subscriptionId;
+        if (!empty($subscriptionId) && $this->subscriptionExpanded) {
+            $subscriptionEntity = EntityManager::retrieveEntity('subscription', $subscriptionId);
+            $subscriptionValue = $subscriptionEntity instanceof AbstractEntity
+                ? $subscriptionEntity->toArray()
+                : $subscriptionId;
+        }
+
+        $array['parent'] = empty($subscriptionId) ? null : [
+            'type'                 => 'subscription_details',
+            'subscription_details' => [
+                'metadata'                    => null,
+                'subscription'                => $subscriptionValue,
+                'subscription_proration_date' => null,
+            ],
+        ];
+
+        $invoicePayment = $this->toInvoicePaymentEntity();
+        $array['payments'] = [
+            'object'   => 'list',
+            'data'     => $invoicePayment ? [$invoicePayment->toArray()] : [],
+            'has_more' => false,
+            'url'      => '/v1/invoice_payments',
+        ];
+
+        $array['total_taxes'] = empty($taxAmount) ? [] : [[
+            'amount'             => $taxAmount,
+            'tax_behavior'       => 'exclusive',
+            'tax_rate_details'   => null,
+            'taxability_reason'  => null,
+            'taxable_amount'     => null,
+            'type'               => 'tax_rate',
+        ]];
+
+        return $array;
+    }
+
+    /**
+     * Builds the InvoicePayment representing this invoice's (single, default) payment, used both to
+     * embed `payments.data[0]` above and by EntityManager's `/v1/invoice_payments` list (which is how
+     * Charge/PaymentIntent - no longer carrying a direct `invoice` back-reference - find their invoice).
+     *
+     * @param bool $expandInvoice When true, embeds this invoice fully (for the `/v1/invoice_payments`
+     *                            list); when false (embedding into this same invoice's own `payments`
+     *                            field) only the id is used, to avoid infinite recursion.
+     */
+    public function toInvoicePaymentEntity(bool $expandInvoice = false): ?InvoicePayment
+    {
+        if (empty($this->props['charge']) && empty($this->props['payment_intent'])) {
+            return null;
+        }
+
+        $payment = ['type' => !empty($this->props['payment_intent']) ? 'payment_intent' : 'charge'];
+
+        if (!empty($this->props['charge'])) {
+            $chargeEntity = EntityManager::retrieveEntity('charge', $this->props['charge']);
+            $payment['charge'] = $chargeEntity instanceof AbstractEntity ? $chargeEntity->toArray() : $this->props['charge'];
+        }
+
+        if (!empty($this->props['payment_intent'])) {
+            $paymentIntentEntity = EntityManager::retrieveEntity('payment_intent', $this->props['payment_intent']);
+            $payment['payment_intent'] = $paymentIntentEntity instanceof AbstractEntity
+                ? $paymentIntentEntity->toArray()
+                : $this->props['payment_intent'];
+        }
+
+        /** @var InvoicePayment */
+        return InvoicePayment::create('ip_' . $this->props['id'], [
+            'amount_paid'      => $this->props['amount_paid'] ?? null,
+            'amount_requested' => $this->props['amount_due'] ?? null,
+            'created'          => $this->props['created'] ?? null,
+            'currency'         => $this->props['currency'] ?? null,
+            'invoice'          => $expandInvoice ? $this->toArray() : $this->props['id'],
+            'is_default'       => true,
+            'payment'          => $payment,
+            'status'           => 'paid',
+        ]);
+    }
+
     public static function parseUrlTail(string $tail): array
     {
         $parsedTail = parent::parseUrlTail($tail);

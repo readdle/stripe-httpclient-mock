@@ -25,7 +25,6 @@ class Charge extends AbstractEntity
         'failure_code'                    => null,
         'failure_message'                 => null,
         'fraud_details'                   => [],
-        'invoice'                         => null,
         'livemode'                        => false,
         'metadata'                        => [],
         'on_behalf_of'                    => null,

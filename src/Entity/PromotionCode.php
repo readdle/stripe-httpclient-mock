@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Readdle\StripeHttpClientMock\Entity;
 
+use Readdle\StripeHttpClientMock\EntityManager;
+
 class PromotionCode extends AbstractEntity
 {
     protected array $props = [
@@ -38,5 +40,30 @@ class PromotionCode extends AbstractEntity
     public static function prefix(): string
     {
         return 'promo';
+    }
+
+    /**
+     * Stripe API "Basil" moved the coupon under `promotion.coupon` (kept as an internal `coupon`
+     * prop above so existing `coupon => $id` list filters still work).
+     */
+    public function toArray(): array
+    {
+        $array = parent::toArray();
+
+        $couponId = $array['coupon'] ?? null;
+        unset($array['coupon']);
+
+        $couponData = null;
+        if (!empty($couponId)) {
+            $couponEntity = EntityManager::retrieveEntity('coupon', $couponId);
+            $couponData = $couponEntity instanceof AbstractEntity ? $couponEntity->toArray() : $couponId;
+        }
+
+        $array['promotion'] = [
+            'type'   => 'coupon',
+            'coupon' => $couponData,
+        ];
+
+        return $array;
     }
 }
