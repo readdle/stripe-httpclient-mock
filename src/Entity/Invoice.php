@@ -61,6 +61,7 @@ class Invoice extends AbstractEntity
         'on_behalf_of'                     => null,
         'paid'                             => false,
         'paid_out_of_band'                 => null,
+        'parent'                           => null,
         'payment_intent'                   => null,
         'payment_settings'                 => [
             'default_mandate'        => null,
@@ -98,8 +99,13 @@ class Invoice extends AbstractEntity
 
     protected static array $expandableProps = [
         'customer',
-        'payment_intent',
-        'subscription',
+        'parent',
+    ];
+
+    // Real Stripe rejects `parent.subscription_details.subscription` outright on the invoice *list*
+    // endpoint - it's only allowed on a single retrieve/action - so this mirrors that restriction.
+    protected static array $listRestrictedExpandableProps = [
+        'parent',
     ];
 
     protected static array $subActions = [
@@ -158,7 +164,11 @@ class Invoice extends AbstractEntity
             $props['lines'] = $lines->toArray();
         }
 
-        return parent::create($id, $props);
+        /** @var Invoice $entity */
+        $entity = parent::create($id, $props);
+        $entity->rebuildParent();
+
+        return $entity;
     }
 
     public function update(array $props): ResponseInterface
@@ -173,54 +183,56 @@ class Invoice extends AbstractEntity
             );
         }
 
-        return parent::update($props);
+        $entity = parent::update($props);
+        $this->rebuildParent();
+
+        return $entity;
     }
 
     /**
-     * Real Stripe only turns `parent.subscription_details.subscription` into a full Subscription
-     * object when it's explicitly expanded (it's a plain string ID by default, same as the old
-     * `subscription` field). EntityManager::expand() special-cases this path (it isn't a plain prop
-     * the generic expand walker can follow) and calls this to record that this specific instance was
-     * expanded, since $props alone can't tell toArray() whether to embed the string or the object.
+     * Stripe API "Basil" (2025-03-31) replaced Invoice's old top level `subscription` field with
+     * `parent.subscription_details.subscription`. `subscription` is kept as an internal-only prop
+     * above (existing code in this library - Subscription::create(), the `subscription` list filter -
+     * still reads/writes it directly), and `parent` is (re)built from it here whenever it changes, as
+     * a real InvoiceParent value object rather than a plain array, so EntityManager::expand() can
+     * recurse into `parent.subscription_details.subscription` through the normal
+     * $expandableProps/howToExpand() mechanism like it does for any other entity - see InvoiceParent.
      */
-    private bool $subscriptionExpanded = false;
-
-    public function markSubscriptionExpanded(): void
+    private function rebuildParent(): void
     {
-        $this->subscriptionExpanded = true;
+        $subscriptionId = $this->props['subscription'] ?? null;
+
+        if (empty($subscriptionId)) {
+            $this->props['parent'] = null;
+
+            return;
+        }
+
+        /** @var InvoiceSubscriptionDetails $subscriptionDetails */
+        $subscriptionDetails = InvoiceSubscriptionDetails::create('', ['subscription' => $subscriptionId]);
+
+        /** @var InvoiceParent $parent */
+        $parent = InvoiceParent::create('', [
+            'type'                 => 'subscription_details',
+            'subscription_details' => $subscriptionDetails,
+        ]);
+
+        $this->props['parent'] = $parent;
     }
 
     /**
-     * Stripe API "Basil" (2025-03-31) removed the top level `subscription`, `charge`, `payment_intent`
-     * and `tax` fields from the Invoice object. We keep them as internal props above (existing code in
-     * this library - e.g. Subscription::create(), the `subscription`/`coupon` list filters - still reads
-     * and writes them directly), but the wire response needs to reflect the new shape, so it's computed
-     * here instead of being part of $props.
+     * Stripe API "Basil" also removed the top level `charge`/`payment_intent`/`tax` fields from the
+     * Invoice object, in favor of `payments`/`total_taxes`. Unlike `parent` above, nothing needs to
+     * recurse through these via expand (this library always embeds them fully - see
+     * toInvoicePaymentEntity()), so they're computed here at output time instead of kept in sync as
+     * real props; `subscription`/`charge`/`payment_intent`/`tax` themselves stay internal-only.
      */
     public function toArray(): array
     {
         $array = parent::toArray();
 
-        $subscriptionId = $array['subscription'] ?? null;
         $taxAmount = $array['tax'] ?? null;
         unset($array['subscription'], $array['charge'], $array['payment_intent'], $array['tax']);
-
-        $subscriptionValue = $subscriptionId;
-        if (!empty($subscriptionId) && $this->subscriptionExpanded) {
-            $subscriptionEntity = EntityManager::retrieveEntity('subscription', $subscriptionId);
-            $subscriptionValue = $subscriptionEntity instanceof AbstractEntity
-                ? $subscriptionEntity->toArray()
-                : $subscriptionId;
-        }
-
-        $array['parent'] = empty($subscriptionId) ? null : [
-            'type'                 => 'subscription_details',
-            'subscription_details' => [
-                'metadata'                    => null,
-                'subscription'                => $subscriptionValue,
-                'subscription_proration_date' => null,
-            ],
-        ];
 
         $invoicePayment = $this->toInvoicePaymentEntity();
         $array['payments'] = [

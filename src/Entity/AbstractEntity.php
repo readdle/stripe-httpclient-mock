@@ -11,8 +11,19 @@ class AbstractEntity implements ResponseInterface
 {
     protected array $props = [];
     protected static array $expandableProps = [];
+    /**
+     * Names (from $expandableProps) that Stripe only allows expanding via a single retrieve/action,
+     * never via a list endpoint - e.g. Invoice::$parent. EntityManager::expand() consults this so a
+     * class declares its own real-API quirks rather than the generic walker special-casing them.
+     */
+    protected static array $listRestrictedExpandableProps = [];
     protected static array $subActions = [];
     protected static array $subEntities = [];
+
+    public static function listRestrictedExpandableProps(): array
+    {
+        return static::$listRestrictedExpandableProps;
+    }
 
     public function __get(string $key)
     {
@@ -26,6 +37,24 @@ class AbstractEntity implements ResponseInterface
         }
 
         $this->fillProps([$key => $value]);
+    }
+
+    /**
+     * clone is normally shallow: it copies $props as an array, but any AbstractEntity *values* held
+     * within it (e.g. an embedded value object like InvoiceParent) would still be the same shared
+     * instance on both the original and the clone. EntityManager::expand() relies on cloning an
+     * entity before mutating it to embed expanded data, so without this, expanding one retrieved
+     * copy of an entity could leak that mutation back into every other reference to it (including the
+     * one still sitting in the entity store). Cloning recurses (each nested AbstractEntity's own
+     * __clone() runs too), so this is safe at any nesting depth.
+     */
+    public function __clone(): void
+    {
+        foreach ($this->props as $key => $value) {
+            if ($value instanceof AbstractEntity) {
+                $this->props[$key] = clone $value;
+            }
+        }
     }
 
     public static function create(string $id, array $props = []): ResponseInterface
