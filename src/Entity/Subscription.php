@@ -101,12 +101,31 @@ class Subscription extends AbstractEntity
             $entity->props['items'] = (new Collection())->toArray();
         }
 
-        if (array_key_exists('promotion_code', $props)) {
+        $promotionCodeId = $props['promotion_code'] ?? null;
+        $couponId = $props['coupon'] ?? null;
+
+        foreach ($props['discounts'] ?? [] as $discountParams) {
+            if (!empty($discountParams['promotion_code'])) {
+                $promotionCodeId = $discountParams['promotion_code'];
+                break;
+            }
+
+            if (!empty($discountParams['coupon'])) {
+                $couponId = $discountParams['coupon'];
+                break;
+            }
+        }
+
+        if (!empty($promotionCodeId)) {
             /** @var PromotionCode $promoCode */
-            $promoCode = EntityManager::retrieveEntity('promotion_code', $props['promotion_code']);
+            $promoCode = EntityManager::retrieveEntity('promotion_code', $promotionCodeId);
+            $couponId = $promoCode->coupon;
+        }
+
+        if (!empty($couponId)) {
             $discount = EntityManager::createEntity('discount', [
-                'coupon'         => $promoCode->coupon,
-                'promotion_code' => $props['promotion_code'],
+                'coupon'         => $couponId,
+                'promotion_code' => $promotionCodeId,
             ]);
             $entity->props['discount'] = $discount->toArray();
         }
