@@ -51,6 +51,12 @@ class InvoiceItem extends AbstractEntity
      */
     public static function create(string $id, array $props = []): ResponseInterface
     {
+        if (!empty($props['pricing']['price'])) {
+            $props['price'] = $props['pricing']['price'];
+        }
+
+        unset($props['pricing']);
+
         if (array_key_exists('invoice', $props)) {
             /** @var Invoice $invoice */
             $invoice = EntityManager::retrieveEntity('invoice', $props['invoice']);
