@@ -5,7 +5,6 @@ namespace Readdle\StripeHttpClientMock;
 
 use Exception;
 use Readdle\StripeHttpClientMock\Entity\AbstractEntity;
-use Readdle\StripeHttpClientMock\Entity\Invoice;
 use Readdle\StripeHttpClientMock\Error\ResourceMissing;
 use Readdle\StripeHttpClientMock\Success\Deleted;
 
@@ -355,19 +354,11 @@ final class EntityManager
         ];
     }
 
-    private static function expand(array $whatToExpand, AbstractEntity $entity): ResponseInterface
+    private static function expand(array $whatToExpand, AbstractEntity $entity, bool $isList = false): ResponseInterface
     {
         $clone = clone $entity;
 
         foreach ($whatToExpand as $target) {
-            // `parent.subscription_details.subscription` isn't a plain prop path the generic walker
-            // below can follow (`parent` is computed at Invoice::toArray() time, not stored in
-            // $props), so it's special-cased here instead - see Invoice::markSubscriptionExpanded().
-            if ($clone instanceof Invoice && $target === 'parent.subscription_details.subscription') {
-                $clone->markSubscriptionExpanded();
-                continue;
-            }
-
             $path = explode('.', $target);
             $pointer = $clone;
 
@@ -375,6 +366,13 @@ final class EntityManager
                 $value = $pointer->$prop;
 
                 if (empty($value)) {
+                    continue 2;
+                }
+
+                // A handful of Stripe fields can only be expanded via a single retrieve/action, never
+                // via a list endpoint (e.g. Invoice::$parent) - entities declare those in
+                // $listRestrictedExpandableProps rather than this generic walker special-casing them.
+                if ($isList && in_array($prop, $pointer::listRestrictedExpandableProps(), true)) {
                     continue 2;
                 }
 
@@ -427,7 +425,7 @@ final class EntityManager
         );
 
         $collection->data = array_map(
-            fn ($entity) => self::expand($whatToExpand, $entity),
+            fn ($entity) => self::expand($whatToExpand, $entity, isList: true),
             $collection->data
         );
 
