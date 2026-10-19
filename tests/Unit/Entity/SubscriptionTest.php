@@ -109,7 +109,9 @@ class SubscriptionTest extends TestCase
     private function createPromotionCode(): array
     {
         $coupon = EntityManager::createEntity('coupon', ['percent_off' => 100, 'duration' => 'forever']);
-        $promoCode = EntityManager::createEntity('promotion_code', ['coupon' => $coupon->id]);
+        $promoCode = EntityManager::createEntity('promotion_code', [
+            'promotion' => ['type' => 'coupon', 'coupon' => $coupon->id],
+        ]);
 
         return [$coupon->id, $promoCode->id];
     }
