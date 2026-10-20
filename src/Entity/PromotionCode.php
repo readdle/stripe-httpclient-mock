@@ -27,6 +27,11 @@ class PromotionCode extends AbstractEntity
 
     public static function create(string $id, array $props = []): AbstractEntity
     {
+        // Stripe API "Basil" expects the coupon nested as `promotion: {type: coupon, coupon: <id>}` on create
+        $props['coupon'] = ($props['promotion']['type'] ?? null) === 'coupon'
+            ? ($props['promotion']['coupon'] ?? null)
+            : null;
+
         /** @var PromotionCode $entity */
         $entity = parent::create($id, $props);
 
